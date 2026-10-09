@@ -61,6 +61,7 @@ function createApp({
   app.use(require('./routes/people'));
   app.use(require('./routes/messages'));
   app.use(require('./routes/staff'));
+  app.use(require('./routes/reports'));
 
   app.get('/', (req, res) => {
     if (req.user) return res.redirect(req.user.role === 'athlete' ? '/feed' : '/dashboard');

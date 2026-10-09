@@ -27,6 +27,31 @@ function coachTeam(req) {
     .get(req.user.id);
 }
 
+// Athlete highlight videos matching `where`, newest first.
+function findHighlights(db, { where = [], params = [], limit = PAGE_SIZE, offset = 0 }) {
+  return db
+    .prepare(
+      `SELECT v.*, u.name AS athlete_name, a.sport AS athlete_sport, a.position, a.high_school, a.star_rating
+       FROM videos v
+       JOIN users u ON u.id = v.athlete_id
+       LEFT JOIN athlete_profiles a ON a.user_id = v.athlete_id
+       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+       ORDER BY v.id DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, offset);
+}
+
+// Highlights from athletes the coach follows, newest first.
+function coachFollowingHighlights(db, user, { limit, offset }) {
+  return findHighlights(db, {
+    where: ['v.athlete_id IN (SELECT followee_id FROM user_follows WHERE follower_id = ?)'],
+    params: [user.id],
+    limit,
+    offset,
+  }).map((v) => ({ kind: 'highlight', ...v }));
+}
+
 // Posts matching `where`, newest first, with team info and like counts for the viewer.
 function findPosts(db, viewerId, { where = [], params = [], limit = PAGE_SIZE, offset = 0 }) {
   return db
@@ -90,7 +115,7 @@ router.get('/feed', requireAuth, (req, res) => {
     db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_id = ?').get(req.user.id).n;
   const mySport = isAthlete
     ? (db.prepare('SELECT sport FROM athlete_profiles WHERE user_id = ?').get(req.user.id) || {}).sport
-    : null;
+    : (db.prepare('SELECT sport FROM coach_profiles WHERE user_id = ?').get(req.user.id) || {}).sport;
 
   let tab = req.query.tab;
   if (!['following', 'discover'].includes(tab)) tab = followingCount ? 'following' : 'discover';
@@ -99,12 +124,17 @@ router.get('/feed', requireAuth, (req, res) => {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const window = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
 
-  const items =
-    tab === 'following'
-      ? followingItems(db, req.user, window)
-      : findPosts(db, req.user.id, { where: sport ? ['t.sport = ?'] : [], params: sport ? [sport] : [], ...window }).map(
-          (p) => ({ kind: 'post', ...p })
-        );
+  const items = isAthlete
+    ? (tab === 'following'
+        ? followingItems(db, req.user, window)
+        : findPosts(db, req.user.id, { where: sport ? ['t.sport = ?'] : [], params: sport ? [sport] : [], ...window }).map(
+            (p) => ({ kind: 'post', ...p })
+          ))
+    : (tab === 'following'
+        ? coachFollowingHighlights(db, req.user, window)
+        : findHighlights(db, { where: sport ? ['a.sport = ?'] : [], params: sport ? [sport] : [], ...window }).map(
+            (v) => ({ kind: 'highlight', ...v })
+          ));
 
   const suggestions = isAthlete
     ? db

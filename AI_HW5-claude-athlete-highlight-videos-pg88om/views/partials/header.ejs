@@ -13,21 +13,15 @@
     <% if (currentUser) { %>
       <% if (currentUser.role === 'athlete') { %>
         <a href="/feed">Feed</a>
-        <a href="/teams">Teams</a>
-        <a href="/messages">Messages<% if (unreadMessages) { %><span class="nav-badge" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a>
         <a href="/dashboard">Dashboard</a>
-        <a href="/athletes/<%= currentUser.id %>">My profile</a>
-        <a class="btn btn-small" href="/videos/new">Upload</a>
+        <a href="/messages">Messages<% if (unreadMessages) { %><span class="nav-badge" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a>
+        <a href="/athletes/<%= currentUser.id %>">Profile</a>
       <% } else { %>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/athletes">Find athletes</a>
-        <a href="/recruiting">Recruiting</a>
         <a href="/feed">Feed</a>
-        <a href="/messages">Messages<% if (unreadMessages) { %><span class="nav-badge" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a>
+        <a href="/athletes">Find athletes</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/calendar">Calendar</a>
-        <a href="/teams/mine">My team</a>
-        <a href="/coaches/<%= currentUser.id %>">My profile</a>
-        <a class="btn btn-small" href="/posts/new">New post</a>
+        <a href="/coaches/<%= currentUser.id %>">Profile</a>
       <% } %>
       <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>
     <% } else { %>

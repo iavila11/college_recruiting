@@ -180,6 +180,17 @@ CREATE TABLE IF NOT EXISTS conversation_reads (
   last_read_message_id INTEGER NOT NULL,
   PRIMARY KEY (conversation_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS account_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reported_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  details TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK (reporter_id != reported_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reports_reported ON account_reports(reported_id);
 `;
 
 // Columns added after the first release; ALTER TABLE brings older databases up to date.

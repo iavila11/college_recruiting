@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>Report <%= target.name %></h1>
+  <p class="muted small"><%= target.role === 'athlete' ? 'Athlete' : 'Coach' %> account</p>
+  <% if (alreadyReported) { %>
+    <div class="flash">You have already reported this account. Our team will review it.</div>
+    <p><a class="btn btn-secondary" href="<%= target.role === 'athlete' ? '/athletes/' : '/coaches/' %><%= target.id %>">Back to profile</a></p>
+  <% } else { %>
+    <p class="muted">Help keep the community honest. Reports are reviewed by our team and kept confidential.</p>
+    <% if (error) { %><p class="error"><%= error %></p><% } %>
+    <form method="post" action="/users/<%= target.id %>/report" class="form">
+      <label>Reason
+        <select name="reason" required>
+          <option value="">—</option>
+          <% reasons.forEach(function (r) { %><option <%= form.reason === r ? 'selected' : '' %>><%= r %></option><% }) %>
+        </select>
+      </label>
+      <label>Details (optional) <textarea name="details" rows="4" maxlength="2000" placeholder="Tell us what happened, what seems false or misleading, and any evidence."><%= form.details || '' %></textarea></label>
+      <button class="btn btn-danger">Submit report</button>
+    </form>
+  <% } %>
+</section>
+<%- include('partials/footer') %>
