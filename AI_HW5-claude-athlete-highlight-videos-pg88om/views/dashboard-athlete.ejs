@@ -1,0 +1,93 @@
+<%- include('partials/header') %>
+<h1>Hey, <%= currentUser.name.split(' ')[0] %></h1>
+<section class="card">
+  <div class="request-head">
+    <div>
+      <h2 class="flush">Your athlete profile</h2>
+      <p class="muted small">
+        <%= [profile.athlete_code && ('ID ' + profile.athlete_code), profile.sport, profile.position, profile.high_school].filter(Boolean).join(' · ') || 'Not filled in yet' %>
+        <% if (profile.star_rating) { %> <span class="stars"><%= stars(profile.star_rating) %></span><% } %>
+      </p>
+    </div>
+    <div class="actions flush">
+      <a class="btn btn-secondary btn-small" href="/athletes/<%= currentUser.id %>">View</a>
+      <a class="btn btn-small" href="/profile/edit">Edit</a>
+    </div>
+  </div>
+  <p class="small"><strong><%= totalFields - missing.length %> of <%= totalFields %></strong> profile fields complete</p>
+  <% if (missing.length) { %>
+    <p class="small muted">Still missing:</p>
+    <ul class="checklist small">
+      <% missing.forEach(function (f) { %><li><%= f.label %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
+<dl class="stats card">
+  <div><dt>Highlights</dt><dd><%= videos.length %></dd></div>
+  <div><dt>Total views</dt><dd><%= totalViews %></dd></div>
+  <div><dt>Invitations</dt><dd><%= requests.length %></dd></div>
+  <div><dt>Pending</dt><dd><%= requests.filter(function (r) { return r.status === 'pending'; }).length %></dd></div>
+</dl>
+
+<h2>Visit invitations</h2>
+<% if (!requests.length) { %>
+  <p class="muted">No invitations yet. Coaches open their visit calendars to athletes by Athlete ID<%= profile.athlete_code ? '' : ', so add yours to your profile' %>. Keep your profile complete and upload fresh game film to get noticed.</p>
+<% } %>
+<% requests.forEach(function (r) { var scheduled = r.status === 'accepted' && r.starts_at; %>
+  <article class="card request">
+    <div class="request-head">
+      <div>
+        <strong><a class="post-team" href="/coaches/<%= r.coach_id %>"><%= r.coach_name %></a></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
+        <div class="muted small"><%= [r.school, r.division].filter(Boolean).join(' · ') || 'Program not listed' %></div>
+      </div>
+      <span class="status status-<%= r.status %>"><%= scheduled ? 'Scheduled' : r.status === 'pending' ? 'Invited' : r.status %></span>
+    </div>
+    <% if (scheduled) { %>
+      <div class="visit-when">
+        <strong><%= formatSlot(r.starts_at, r.duration_minutes) %></strong>
+        <% if (r.location) { %><div class="small"><%= r.location %></div><% } %>
+      </div>
+    <% } %>
+    <p class="pre"><%= r.message %></p>
+    <p class="muted small">
+      <% if (r.video_title) { %>Re: <a href="/videos/<%= r.video_id %>"><%= r.video_title %></a> · <% } %>
+      Sent <%= r.created_at.slice(0, 10) %> · <a href="/messages/new?coach=<%= r.coach_id %>">Message <%= r.coach_name %></a>
+    </p>
+    <% if (r.status === 'pending') { %>
+      <div class="actions">
+        <a class="btn" href="/visit-requests/<%= r.id %>/schedule">Choose a visit time</a>
+        <span class="muted small" style="align-self: center"><%= r.open_times %> time<%= r.open_times === 1 ? '' : 's' %> on the coach's calendar</span>
+      </div>
+      <details class="decline">
+        <summary class="small muted">Not interested?</summary>
+        <form method="post" action="/visit-requests/<%= r.id %>/respond" class="form">
+          <label>Note to the coach (optional) <input name="response_message" placeholder="Thank you, but I'm going another direction."></label>
+          <button class="btn btn-secondary" name="decision" value="decline">Decline invitation</button>
+        </form>
+      </details>
+    <% } else if (r.status === 'accepted') { %>
+      <p class="small">Coach contact: <a href="mailto:<%= r.coach_email %>"><%= r.coach_email %></a></p>
+      <% if (scheduled) { %>
+        <div class="actions">
+          <a class="btn btn-secondary btn-small" href="/visit-requests/<%= r.id %>/schedule">Reschedule</a>
+          <form method="post" action="/visit-requests/<%= r.id %>/cancel" class="inline" onsubmit="return confirm('Cancel this visit?')">
+            <button class="btn btn-secondary btn-small">Cancel visit</button>
+          </form>
+        </div>
+      <% } %>
+    <% } %>
+  </article>
+<% }) %>
+
+<h2>Your highlights <a class="btn btn-small" href="/videos/new">Upload</a></h2>
+<% if (!videos.length) { %><p class="muted">Nothing uploaded yet.</p><% } %>
+<div class="grid">
+  <% videos.forEach(function (v) { %>
+    <article class="card video-card">
+      <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+      <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+      <p class="muted small"><%= v.views %> views</p>
+    </article>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

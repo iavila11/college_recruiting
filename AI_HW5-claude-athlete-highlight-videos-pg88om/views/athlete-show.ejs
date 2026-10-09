@@ -1,0 +1,120 @@
+<%- include('partials/header') %>
+<section class="profile card">
+  <div class="profile-head">
+    <div>
+      <h1><%= athlete.name %></h1>
+      <% if (athlete.star_rating) { %><p class="stars" title="<%= athlete.star_rating %>-star"><%= stars(athlete.star_rating) %></p><% } %>
+      <p class="muted">
+        <%= [athlete.sport, athlete.position, athlete.grad_year && ('Class of ' + athlete.grad_year)].filter(Boolean).join(' · ') %>
+      </p>
+      <p class="muted"><%= [athlete.high_school, [athlete.city, athlete.state].filter(Boolean).join(', ')].filter(Boolean).join(' — ') %></p>
+    </div>
+    <% if (isOwner) { %><a class="btn btn-secondary" href="/profile/edit">Edit profile</a><% } %>
+  </div>
+  <%- include('partials/follow-stats', { personId: athlete.id, social: social }) %>
+  <dl class="stats">
+    <% if (athlete.athlete_code) { %><div><dt>Athlete ID</dt><dd class="athlete-id"><%= athlete.athlete_code %></dd></div><% } %>
+    <% if (athlete.position_rank) { %><div><dt>Position rank</dt><dd>#<%= athlete.position_rank %></dd></div><% } %>
+    <% if (athlete.national_rank) { %><div><dt>National rank</dt><dd>#<%= athlete.national_rank %></dd></div><% } %>
+    <% if (athlete.height) { %><div><dt>Height</dt><dd><%= athlete.height %></dd></div><% } %>
+    <% if (athlete.weight) { %><div><dt>Weight</dt><dd><%= athlete.weight %></dd></div><% } %>
+    <% if (athlete.gpa) { %><div><dt>GPA</dt><dd><%= athlete.gpa %></dd></div><% } %>
+    <div><dt>Videos</dt><dd><%= videos.length %></dd></div>
+  </dl>
+  <% if (athlete.bio) { %><p class="pre"><%= athlete.bio %></p><% } %>
+  <% if (isOwner && missing.length) { %>
+    <div class="flash">
+      Complete your profile so coaches can find you. Still missing:
+      <%= missing.map(function (f) { return f.label; }).join(', ') %>.
+      <a href="/profile/edit">Edit profile</a>
+    </div>
+  <% } %>
+  <% if (canSeeContact) { %>
+    <p class="contact"><strong>Contact:</strong> <a href="mailto:<%= athlete.email %>"><%= athlete.email %></a><% if (athlete.phone) { %> · <%= athlete.phone %><% } %></p>
+  <% } else if (currentUser && currentUser.role === 'coach') { %>
+    <p class="muted small">Contact info is shared with your staff once the athlete schedules a visit with any of you.</p>
+  <% } %>
+</section>
+
+<h2>Highlights</h2>
+<% if (!videos.length) { %>
+  <p class="muted"><%= isOwner ? 'You have not uploaded any highlights yet.' : 'No highlights uploaded yet.' %>
+    <% if (isOwner) { %><a href="/videos/new">Upload your first one</a>.<% } %></p>
+<% } %>
+<div class="grid">
+  <% videos.forEach(function (v) { %>
+    <article class="card video-card">
+      <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+      <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+      <p class="muted small"><%= [v.opponent && ('vs. ' + v.opponent), v.game_date, v.views + ' views'].filter(Boolean).join(' · ') %></p>
+    </article>
+  <% }) %>
+</div>
+
+<% if (currentUser && currentUser.role === 'coach') { %>
+<% if (team) { %>
+<section class="card" id="board">
+  <h2>Your team's recruiting board</h2>
+  <% if (recruit) { %>
+    <p class="small muted">On the <%= team.school %> board<% if (recruit.updated_by_name) { %> · notes last updated by <%= recruit.updated_by_name %> <%= timeAgo(recruit.updated_at) %><% } %>. Only your staff can see these notes.</p>
+    <form method="post" action="/recruiting/<%= athlete.id %>/notes" class="form">
+      <input type="hidden" name="back" value="profile">
+      <label>Staff notes <textarea name="notes" rows="3" maxlength="2000" placeholder="Evaluation, contact history, next steps…"><%= recruit.notes || '' %></textarea></label>
+      <div class="actions flush"><button class="btn btn-secondary btn-small">Save notes</button> <a class="small" href="/recruiting">Open recruiting board</a></div>
+    </form>
+  <% } else { %>
+    <form method="post" action="/recruiting" class="form">
+      <input type="hidden" name="athlete_id" value="<%= athlete.id %>">
+      <p class="muted small flush">Add <%= athlete.name %> to the board your whole staff shares, with notes.</p>
+      <label>Staff notes (optional) <textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+      <div><button class="btn btn-small">Add to recruiting board</button></div>
+    </form>
+  <% } %>
+  <% if (staffVisits.length) { %>
+    <h3 class="side-title">Your staff's visits</h3>
+    <% staffVisits.forEach(function (r) { %>
+      <p class="small"><%= r.coach_name %>:
+        <% if (r.status === 'accepted' && r.starts_at) { %><span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %>
+        <% } else { %><span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Choosing a time' : r.status %></span><% } %></p>
+    <% }) %>
+  <% } %>
+</section>
+<% } %>
+
+<section class="card" id="request">
+  <h2>Open your calendar</h2>
+  <% visitRequests.forEach(function (r) { %>
+    <p class="small">Calendar opened <%= r.created_at.slice(0, 10) %>:
+      <% if (r.status === 'accepted' && r.starts_at) { %>
+        <span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %>
+      <% } else { %>
+        <span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Choosing a time' : r.status %></span>
+      <% } %>
+      <% if (r.response_message) { %>“<%= r.response_message %>”<% } %></p>
+  <% }) %>
+  <% if (hasOpenInvite) { %>
+    <p class="muted">This athlete can book any open time on <a href="/calendar">your visit calendar</a>. Bookings show up there and on your dashboard.</p>
+  <% } else if (!athlete.athlete_code) { %>
+    <p class="notice">This athlete hasn't added an Athlete ID yet. Calendars are opened by Athlete ID, so you can invite them once they add one. You can follow them in the meantime.</p>
+  <% } else { %>
+    <p class="muted small">Your calendar is private. Opening it to <span class="athlete-id"><%= athlete.athlete_code %></span> lets this athlete see and book your open times.
+      You have <strong><%= coachOpenTimes %></strong> open time<%= coachOpenTimes === 1 ? '' : 's' %>.</p>
+    <% if (!coachOpenTimes) { %>
+      <p class="notice">You have no open times yet. <a href="/calendar">Add visit times</a> so this athlete has something to choose from.</p>
+    <% } %>
+    <form method="post" action="/calendar/access" class="form">
+      <input type="hidden" name="athlete_code" value="<%= athlete.athlete_code %>">
+      <input type="hidden" name="back" value="/athletes/<%= athlete.id %>">
+      <label>Message <textarea name="message" rows="4" required placeholder="Introduce yourself and your program, and why you'd like them to visit."></textarea></label>
+      <label>About which video?
+        <select name="video_id">
+          <option value="">General</option>
+          <% videos.forEach(function (v) { %><option value="<%= v.id %>" <%= String(v.id) === preselectVideo ? 'selected' : '' %>><%= v.title %></option><% }) %>
+        </select>
+      </label>
+      <button class="btn">Open calendar to <%= athlete.name %></button>
+    </form>
+  <% } %>
+</section>
+<% } %>
+<%- include('partials/footer') %>

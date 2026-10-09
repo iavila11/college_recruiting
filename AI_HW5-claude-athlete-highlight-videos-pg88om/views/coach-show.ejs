@@ -1,0 +1,45 @@
+<%- include('partials/header') %>
+<section class="card team-head">
+  <div class="team-avatar team-avatar-lg" aria-hidden="true"><%= coach.name.trim().charAt(0).toUpperCase() %></div>
+  <div class="grow">
+    <h1><%= coach.name %></h1>
+    <p class="muted"><%= [coach.title, coach.school].filter(Boolean).join(' · ') || 'Coach' %></p>
+    <%- include('partials/follow-stats', { personId: coach.id, social: social }) %>
+    <dl class="stats">
+      <div><dt>Title</dt><dd><%= coach.title || '—' %></dd></div>
+      <div><dt>Team ID</dt><dd class="athlete-id"><%= coach.team_code || '—' %></dd></div>
+      <div><dt>Team name</dt><dd><% if (coach.team_id) { %><a class="post-team" href="/teams/<%= coach.team_id %>"><%= coach.school %></a><% } else { %><%= coach.school || '—' %><% } %></dd></div>
+      <div><dt>Team sport</dt><dd><%= coach.sport || '—' %></dd></div>
+      <% if (coach.division) { %><div><dt>Division</dt><dd><%= coach.division %></dd></div><% } %>
+    </dl>
+    <% if (isSelf && missing.length) { %>
+      <div class="flash">
+        Complete your profile so athletes know who you are. Still missing:
+        <%= missing.map(function (f) { return f.label; }).join(', ') %>.
+        <a href="/profile/edit">Edit profile</a>
+      </div>
+    <% } %>
+  </div>
+  <div class="actions flush">
+    <% if (isSelf) { %>
+      <a class="btn btn-secondary" href="/profile/edit">Edit profile</a>
+    <% } else if (currentUser.role === 'athlete') { %>
+      <a class="btn" href="/messages/new?coach=<%= coach.id %>">Message</a>
+    <% } %>
+  </div>
+</section>
+<h2>Posts</h2>
+<% if (!posts.length) { %><p class="muted">No posts yet.</p><% } %>
+<div class="post-grid">
+  <% posts.forEach(function (p) { %>
+    <a class="post-tile" href="/posts/<%= p.id %>" title="<%= p.caption || '' %>">
+      <% if (p.media_kind === 'image') { %>
+        <img src="/media/<%= p.media_filename %>" alt="<%= p.caption ? p.caption.slice(0, 120) : 'Post' %>" loading="lazy">
+      <% } else { %>
+        <video muted preload="metadata" playsinline><source src="/media/<%= p.media_filename %>#t=0.1" type="<%= p.mime_type %>"></video>
+        <span class="tile-badge" aria-label="Video">▶</span>
+      <% } %>
+    </a>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>
