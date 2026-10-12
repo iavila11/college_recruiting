@@ -2,38 +2,43 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { openDatabase } = require('../src/db');
 
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
-const DB_PATH = path.join(__dirname, '..', 'data', 'app.db');
+async function seed({ dbPath = path.join(__dirname, '..', 'data', 'app.db'), uploadDir = path.join(__dirname, '..', 'uploads'), force = false } = {}) {
+  function ensureUploads() {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 
-function ensureUploads() {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+  function placeholderFile(name, contents = 'placeholder') {
+    const p = path.join(uploadDir, name);
+    if (!fs.existsSync(p)) fs.writeFileSync(p, contents);
+    return name;
+  }
 
-function placeholderFile(name, contents = 'placeholder') {
-  const p = path.join(UPLOADS_DIR, name);
-  if (!fs.existsSync(p)) fs.writeFileSync(p, contents);
-  return name;
-}
+  function getOrCreate(db, table, uniqueCol, values) {
+    const existing = db.prepare(`SELECT * FROM ${table} WHERE ${uniqueCol} = ?`).get(values[uniqueCol]);
+    if (existing) return existing;
+    const cols = Object.keys(values);
+    const q = cols.map(() => '?').join(',');
+    db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${q})`).run(...cols.map((c) => values[c]));
+    return db.prepare(`SELECT * FROM ${table} WHERE ${uniqueCol} = ?`).get(values[uniqueCol]);
+  }
 
-function getOrCreate(db, table, uniqueCol, values) {
-  const existing = db.prepare(`SELECT * FROM ${table} WHERE ${uniqueCol} = ?`).get(values[uniqueCol]);
-  if (existing) return existing;
-  const cols = Object.keys(values);
-  const q = cols.map(() => '?').join(',');
-  db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${q})`).run(...cols.map((c) => values[c]));
-  return db.prepare(`SELECT * FROM ${table} WHERE ${uniqueCol} = ?`).get(values[uniqueCol]);
-}
+  function upsertUser(db, email, role, name, password_hash = 'seeded') {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    if (user) return user;
+    db.prepare('INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, ?, ?)').run(email, password_hash, role, name);
+    return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  }
 
-function upsertUser(db, email, role, name, password_hash = 'seeded') {
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (user) return user;
-  db.prepare('INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, ?, ?)').run(email, password_hash, role, name);
-  return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-}
-
-function main() {
   ensureUploads();
-  const db = openDatabase(DB_PATH);
+  const db = openDatabase(dbPath);
+
+  if (!force) {
+    const hasUsers = !!db.prepare('SELECT 1 FROM sqlite_master WHERE type = "table" AND name = "users"').get() && !!db.prepare('SELECT 1 FROM users LIMIT 1').get();
+    if (hasUsers) {
+      console.log('Database already has users; skipping seed. Use force=true to override.');
+      return;
+    }
+  }
 
   db.exec('BEGIN');
   try {
@@ -83,10 +88,10 @@ function main() {
     db.prepare('INSERT OR IGNORE INTO posts (team_id, author_id, caption, media_filename, media_kind, mime_type) VALUES (?, ?, ?, ?, ?, ?)').run(team2.id, c2.id, 'City College highlights', media2, 'image', 'image/jpeg');
 
     console.log('Adding a visit slot and a pending visit request...');
-    const slot = db.prepare('INSERT INTO visit_slots (coach_id, starts_at, duration_minutes, capacity, location) VALUES (?, ?, ?, ?, ?)').run(c1.id, '2025-07-15T10:00', 30, 1, 'State U Campus');
+    db.prepare('INSERT INTO visit_slots (coach_id, starts_at, duration_minutes, capacity, location) VALUES (?, ?, ?, ?, ?)').run(c1.id, '2025-07-15T10:00', 30, 1, 'State U Campus');
     const slotRow = db.prepare('SELECT * FROM visit_slots WHERE coach_id = ? ORDER BY id DESC LIMIT 1').get(c1.id);
 
-    db.prepare('INSERT INTO visit_requests (coach_id, athlete_id, video_id, message, proposed_date, status, slot_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    db.prepare('INSERT OR IGNORE INTO visit_requests (coach_id, athlete_id, video_id, message, proposed_date, status, slot_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(c1.id, a1.id, null, 'We would like to invite you to visit State U.', '2025-07-15', 'pending', slotRow.id);
 
     db.exec('COMMIT');
@@ -99,13 +104,20 @@ function main() {
     };
 
     console.log('Seeding complete. Summary:', counts);
-    console.log('Uploads directory:', UPLOADS_DIR);
-    console.log('Database file:', DB_PATH);
+    console.log('Uploads directory:', uploadDir);
+    console.log('Database file:', dbPath);
   } catch (err) {
     console.error('Error during seeding:', err);
     db.exec('ROLLBACK');
-    process.exit(1);
+    throw err;
   }
 }
 
-if (require.main === module) main();
+if (require.main === module) {
+  seed().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { seed };
