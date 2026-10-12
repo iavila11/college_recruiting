@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<div class="thread">
+  <h1>Reported accounts</h1>
+  <p class="muted">Confirming a report puts a fraud warning on the account's profile for everyone. Dismissing clears that one report.</p>
+  <% if (!reports.length) { %><p class="card muted">No open reports.</p><% } %>
+  <% reports.forEach(function (r) { %>
+    <article class="card request">
+      <div class="request-head">
+        <div>
+          <a class="post-team" href="<%= profilePath({ id: r.reported_id, role: r.reported_role }) %>"><%= r.reported_name %></a>
+          <div class="muted small"><%= r.reported_role === 'athlete' ? 'Athlete' : 'Coach' %> · <%= r.reported_email %> · <%= r.open_count %> open report<%= r.open_count === 1 ? '' : 's' %></div>
+        </div>
+        <span class="status status-pending"><%= r.reason %></span>
+      </div>
+      <% if (r.details) { %><p class="pre"><%= r.details %></p><% } %>
+      <p class="muted small">Reported by <%= r.reporter_name %> <%= timeAgo(r.created_at) %></p>
+      <div class="actions">
+        <form method="post" action="/reports/<%= r.id %>/confirm" class="inline" onsubmit="return confirm('Flag this account as fraudulent?')">
+          <button class="btn btn-danger btn-small">Confirm fraud</button>
+        </form>
+        <form method="post" action="/reports/<%= r.id %>/dismiss" class="inline">
+          <button class="btn btn-secondary btn-small">Dismiss</button>
+        </form>
+      </div>
+    </article>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

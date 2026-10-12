@@ -1,0 +1,78 @@
+<%- include('partials/header') %>
+<h1>Coach dashboard</h1>
+<section class="card">
+  <div class="request-head">
+    <div>
+      <h2 class="flush">Your coach profile</h2>
+      <p class="muted small">
+        <%= [profile.title, profile.school, profile.sport, profile.team_code && ('Team ID ' + profile.team_code)].filter(Boolean).join(' · ') || 'Not filled in yet' %>
+      </p>
+    </div>
+    <div class="actions flush">
+      <a class="btn btn-secondary btn-small" href="/coaches/<%= currentUser.id %>">View</a>
+      <a class="btn btn-small" href="/profile/edit">Edit</a>
+    </div>
+  </div>
+  <p class="small"><strong><%= totalFields - missing.length %> of <%= totalFields %></strong> profile fields complete</p>
+  <% if (missing.length) { %>
+    <p class="small muted">Still missing:</p>
+    <ul class="checklist small">
+      <% missing.forEach(function (f) { %><li><%= f.label %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
+<div class="actions">
+  <a class="btn" href="/calendar">Visit calendar (<%= openTimes %> open · <%= accessCount %> athlete<%= accessCount === 1 ? '' : 's' %> with access)</a>
+  <% if (profile.team_id) { %>
+    <a class="btn btn-secondary" href="/recruiting">Recruiting board</a>
+    <a class="btn btn-secondary" href="/teams/<%= profile.team_id %>">Team page &amp; staff</a>
+  <% } %>
+</div>
+
+<h2>Visit requests</h2>
+<% if (!pending.length) { %>
+  <p class="muted"><%= accessCount
+    ? 'No requests waiting. Athletes you open your calendar to can request your open times.'
+    : "Athletes can't request visits until you open your calendar to them by Athlete ID on your visit calendar or their profile." %></p>
+<% } %>
+<% pending.forEach(function (r) { %>
+  <article class="card request">
+    <div class="request-head">
+      <div>
+        <strong><a class="post-team" href="/athletes/<%= r.athlete_id %>"><%= r.athlete_name %></a></strong>
+        <div class="muted small"><%= [r.sport, r.position, r.grad_year && ('Class of ' + r.grad_year)].filter(Boolean).join(' · ') %></div>
+      </div>
+      <span class="status status-pending">Requested</span>
+    </div>
+    <div class="visit-when"><strong><%= formatSlot(r.starts_at, r.duration_minutes) %></strong></div>
+    <% if (r.message) { %><p class="pre">“<%= r.message %>”</p><% } %>
+    <form method="post" action="/visit-requests/<%= r.id %>/respond" class="form">
+      <label>Note to the athlete (optional) <input name="response_message" maxlength="1000"></label>
+      <div class="actions flush">
+        <button class="btn" name="decision" value="accept">Confirm visit</button>
+        <button class="btn btn-secondary" name="decision" value="decline">Decline</button>
+      </div>
+    </form>
+  </article>
+<% }) %>
+
+<h2>Upcoming visits</h2>
+<% if (!upcoming.length) { %>
+  <p class="muted">No confirmed visits yet.</p>
+<% } else { %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Athlete</th><th>Sport / position</th><th>Class</th><th>Visit time</th></tr></thead>
+    <tbody>
+      <% upcoming.forEach(function (r) { %>
+        <tr>
+          <td><a href="/athletes/<%= r.athlete_id %>"><%= r.athlete_name %></a>
+            <% if (r.message) { %><div class="small muted">“<%= r.message %>”</div><% } %></td>
+          <td><%= [r.sport, r.position].filter(Boolean).join(' / ') %></td>
+          <td><%= r.grad_year || '' %></td>
+          <td><span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table></div>
+<% } %>
+<%- include('partials/footer') %>

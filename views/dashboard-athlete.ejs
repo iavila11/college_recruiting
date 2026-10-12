@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+<h1>Hey, <%= currentUser.name.split(' ')[0] %></h1>
+<section class="card">
+  <div class="request-head">
+    <div>
+      <h2 class="flush">Your athlete profile</h2>
+      <p class="muted small">
+        <%= [profile.athlete_code && ('ID ' + profile.athlete_code), profile.sport, profile.position, profile.high_school].filter(Boolean).join(' · ') || 'Not filled in yet' %>
+        <% if (profile.star_rating) { %> <span class="stars"><%= stars(profile.star_rating) %></span><% } %>
+      </p>
+    </div>
+    <div class="actions flush">
+      <a class="btn btn-secondary btn-small" href="/athletes/<%= currentUser.id %>">View</a>
+      <a class="btn btn-small" href="/profile/edit">Edit</a>
+    </div>
+  </div>
+  <p class="small"><strong><%= totalFields - missing.length %> of <%= totalFields %></strong> profile fields complete</p>
+  <% if (missing.length) { %>
+    <p class="small muted">Still missing:</p>
+    <ul class="checklist small">
+      <% missing.forEach(function (f) { %><li><%= f.label %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
+<dl class="stats card">
+  <div><dt>Highlights</dt><dd><%= videos.length %></dd></div>
+  <div><dt>Total views</dt><dd><%= totalViews %></dd></div>
+  <div><dt>Open calendars</dt><dd><%= calendars.length %></dd></div>
+  <div><dt>Visits</dt><dd><%= requests.filter(function (r) { return r.status === 'accepted'; }).length %></dd></div>
+</dl>
+
+<h2>Visits</h2>
+<% if (!calendars.length && !requests.length) { %>
+  <p class="muted">No coach has opened their visit calendar to you yet. Coaches choose which athletes can request visits, by Athlete ID<%= profile.athlete_code ? '' : ', so add yours to your profile' %>. Keep your profile complete and upload fresh game film to get noticed.</p>
+<% } %>
+<% requests.forEach(function (r) { var scheduled = r.status === 'accepted'; %>
+  <article class="card request">
+    <div class="request-head">
+      <div>
+        <strong><a class="post-team" href="/coaches/<%= r.coach_id %>"><%= r.coach_name %></a></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
+        <div class="muted small"><%= r.school || 'Program not listed' %></div>
+      </div>
+      <span class="status status-<%= r.status %>"><%= scheduled ? 'Scheduled' : r.status === 'pending' ? 'Requested' : 'Declined' %></span>
+    </div>
+    <% if (r.starts_at) { %>
+      <div class="visit-when">
+        <strong><%= formatSlot(r.starts_at, r.duration_minutes) %></strong>
+        <% if (r.location) { %><div class="small"><%= r.location %></div><% } %>
+      </div>
+    <% } %>
+    <% if (r.response_message) { %><p class="pre small">“<%= r.response_message %>”</p><% } %>
+    <% if (r.status === 'pending') { %><p class="muted small">Waiting for <%= r.coach_name %> to confirm.</p><% } %>
+    <% if (scheduled) { %><p class="small">Coach contact: <a href="mailto:<%= r.coach_email %>"><%= r.coach_email %></a></p><% } %>
+    <% if (r.status !== 'declined') { %>
+      <div class="actions">
+        <form method="post" action="/visit-requests/<%= r.id %>/cancel" class="inline" onsubmit="return confirm('Cancel this visit?')">
+          <button class="btn btn-secondary btn-small">Cancel</button>
+        </form>
+      </div>
+    <% } %>
+  </article>
+<% }) %>
+
+<% if (calendars.length) { %>
+  <h2>Coaches who opened their calendar to you</h2>
+  <% calendars.forEach(function (c) { %>
+    <article class="card request">
+      <div class="request-head">
+        <div>
+          <strong><a class="post-team" href="/coaches/<%= c.coach_id %>"><%= c.coach_name %></a></strong><% if (c.coach_title) { %>, <%= c.coach_title %><% } %>
+          <div class="muted small"><%= [c.school, c.division].filter(Boolean).join(' · ') || 'Program not listed' %></div>
+        </div>
+      </div>
+      <% if (c.message) { %><p class="pre"><%= c.message %></p><% } %>
+      <div class="actions">
+        <a class="btn<%= c.request ? ' btn-secondary btn-small' : '' %>" href="/coaches/<%= c.coach_id %>/visit"><%= c.request ? 'Change time' : 'Request a visit' %></a>
+        <span class="muted small" style="align-self: center"><%= c.open_times %> time<%= c.open_times === 1 ? '' : 's' %> on the coach's calendar · <a href="/messages/new?coach=<%= c.coach_id %>">Message</a></span>
+      </div>
+    </article>
+  <% }) %>
+<% } %>
+
+<h2>Your highlights <a class="btn btn-small" href="/videos/new">Upload</a></h2>
+<% if (!videos.length) { %><p class="muted">Nothing uploaded yet.</p><% } %>
+<div class="grid">
+  <% videos.forEach(function (v) { %>
+    <article class="card video-card">
+      <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+      <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+      <p class="muted small"><%= v.views %> views</p>
+    </article>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

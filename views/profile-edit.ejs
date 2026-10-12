@@ -1,0 +1,79 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1><%= currentUser.role === 'athlete' ? 'Your athlete profile' : 'Your coach profile' %></h1>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/profile/edit" class="form">
+    <label>Full name <input name="name" value="<%= currentUser.name %>"></label>
+    <% if (currentUser.role === 'athlete') { %>
+      <h2 class="form-section">Athlete profile</h2>
+      <p class="muted small">Coaches search and filter on these. Fill them in as accurately as you can.</p>
+      <label>Athlete ID <input name="athlete_code" value="<%= profile.athlete_code || '' %>" placeholder="e.g. NCAA Eligibility Center ID"></label>
+      <div class="row">
+        <label>Sport
+          <select name="sport">
+            <option value="">—</option>
+            <% SPORTS.forEach(function (s) { %><option <%= profile.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+        <label>Position <input name="position" value="<%= profile.position || '' %>" placeholder="e.g. Point Guard"></label>
+      </div>
+      <label>School <input name="high_school" value="<%= profile.high_school || '' %>" placeholder="High school or club"></label>
+      <div class="row">
+        <label>Position ranking <input name="position_rank" inputmode="numeric" value="<%= profile.position_rank || '' %>" placeholder="e.g. 12"></label>
+        <label>Star ranking
+          <select name="star_rating">
+            <option value="">—</option>
+            <% [5, 4, 3, 2, 1].forEach(function (n) { %><option value="<%= n %>" <%= String(profile.star_rating) === String(n) ? 'selected' : '' %>><%= n %> star<%= n === 1 ? '' : 's' %></option><% }) %>
+          </select>
+        </label>
+        <label>National ranking <input name="national_rank" inputmode="numeric" value="<%= profile.national_rank || '' %>" placeholder="e.g. 150"></label>
+      </div>
+      <div class="row">
+        <label>City <input name="city" value="<%= profile.city || '' %>"></label>
+        <label>State
+          <select name="state">
+            <option value="">—</option>
+            <% US_STATES.forEach(function (s) { %><option <%= profile.state === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+      </div>
+      <label>Profile bio <textarea name="bio" rows="4" placeholder="Stats, awards, what you bring to a program…"><%= profile.bio || '' %></textarea></label>
+
+      <h2 class="form-section">Additional details <span class="muted small">(optional)</span></h2>
+      <div class="row">
+        <label>Grad year <input name="grad_year" inputmode="numeric" value="<%= profile.grad_year || '' %>" placeholder="2028"></label>
+        <label>Height <input name="height" value="<%= profile.height || '' %>" placeholder="6'2&quot;"></label>
+        <label>Weight <input name="weight" value="<%= profile.weight || '' %>" placeholder="185 lb"></label>
+        <label>GPA <input name="gpa" value="<%= profile.gpa || '' %>" placeholder="3.6"></label>
+      </div>
+      <label>Phone <span class="muted">(only shared with the coaching staff of programs you schedule a visit with)</span>
+        <input name="phone" value="<%= profile.phone || '' %>"></label>
+    <% } else { %>
+      <h2 class="form-section">Coach profile</h2>
+      <p class="muted small">Athletes see this on your profile, team page, and invitations.</p>
+      <label>Title
+        <select name="title">
+          <option value="">—</option>
+          <% COACH_TITLES.forEach(function (t) { %><option <%= profile.title === t ? 'selected' : '' %>><%= t %></option><% }) %>
+        </select>
+      </label>
+      <label>Team ID <input name="team_code" maxlength="40" value="<%= profile.team_code || '' %>" placeholder="e.g. NCAA organization ID"></label>
+      <p class="muted small flush">Coaches who enter the same Team ID share one team page.</p>
+      <div class="row">
+        <label>Team name <input name="school" value="<%= profile.school || '' %>" placeholder="e.g. State University"></label>
+        <label>Team sport
+          <select name="sport">
+            <option value="">—</option>
+            <% SPORTS.forEach(function (s) { %><option <%= profile.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+      </div>
+      <p class="muted small flush">Your team name and sport set up your team page, where you post to athletes' feeds.</p>
+
+      <h2 class="form-section">Additional details <span class="muted small">(optional)</span></h2>
+      <label>Division <input name="division" value="<%= profile.division || '' %>" placeholder="NCAA D1"></label>
+    <% } %>
+    <button class="btn">Save</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

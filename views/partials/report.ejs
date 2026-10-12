@@ -1,0 +1,22 @@
+<% if (report.warning) { %>
+  <p class="error report-warning" role="alert">
+    <%= report.confirmed
+      ? 'This account was found to be fraudulent or misleading. Do not share personal information with it.'
+      : 'Several people have reported this account as fraudulent or misleading. Be careful before sharing personal information.' %>
+  </p>
+<% } %>
+<% if (currentUser && currentUser.id !== personId) { %>
+  <details class="report">
+    <summary class="small muted"><%= report.viewerReported ? 'You reported this account' : 'Report fake account' %></summary>
+    <form method="post" action="/people/<%= personId %>/report" class="form">
+      <label>Reason
+        <select name="reason" required>
+          <option value="">Choose a reason</option>
+          <% REPORT_REASONS.forEach(function (r) { %><option><%= r %></option><% }) %>
+        </select>
+      </label>
+      <label>What's wrong? (optional) <textarea name="details" rows="3" maxlength="2000" placeholder="What makes you think this account isn't who it says it is?"></textarea></label>
+      <button class="btn btn-danger btn-small">Report <%= personName %></button>
+    </form>
+  </details>
+<% } %>
